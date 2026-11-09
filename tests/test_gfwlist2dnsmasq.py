@@ -155,6 +155,30 @@ cat "$TEST_PAYLOAD" > "$dest"
         self.assertIn("server=/example.test/127.0.0.1#5353\n", self.output.read_text())
         self.assertNotIn("server=/example.test/#\n", self.output.read_text())
 
+    def test_abp_syntax_is_removed_from_domains(self):
+        for rule in (b"||example.test^", b"||example.test$important",
+                     b"|https://example.test|", b"||example.test^$important",
+                     b"|https://example.test:443/path", b"||example.test%2fpath",
+                     b"||*.example.test", b"||example.test\r"):
+            with self.subTest(rule=rule):
+                rules = b"[AutoProxy 0.2.9]\n" + rule + b"\n"
+                self.assert_success(self.run_script(rules=rules))
+                self.assertIn("server=/example.test/127.0.0.1#5353\n", self.output.read_text())
+
+    def test_metadata_is_handled_for_whitelist_rules_too(self):
+        rules = RULES + b"@@||example.test^$important\r\n"
+        self.assert_success(self.run_script(rules=rules))
+        output = self.output.read_text()
+        self.assertIn("server=/example.test/#\n", output)
+        self.assertNotIn("server=/example.test/127.0.0.1", output)
+
+    def test_invalid_domain_fragments_are_not_emitted(self):
+        rules = RULES + b"||bad domain.test\n||example.test?query\n"
+        self.assert_success(self.run_script("-l", rules=rules))
+        domains = self.output.read_text().splitlines()
+        self.assertNotIn("bad domain.test", domains)
+        self.assertNotIn("example.test?query", domains)
+
     def test_empty_and_blank_exclusions_are_noops(self):
         for content in (b"", b"\n", b"\r\n \t\n"):
             with self.subTest(content=content):
