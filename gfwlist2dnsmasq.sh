@@ -253,7 +253,7 @@ process(){
     _green 'Done.\n\n'
 
     # Convert
-    IGNORE_PATTERN='^\!|\[|^@@|(https?://){0,1}[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'
+    IGNORE_PATTERN='^\!|\[|^@@'
     HEAD_FILTER_PATTERN='s#^(\|\|?)?(https?://)?##g'
     TAIL_FILTER_PATTERN='s#([/:]|%2[Ff]|\^|\$|\|).*$##; s/[[:space:]]*$//'
     DOMAIN_PATTERN='([a-zA-Z0-9][-a-zA-Z0-9]*(\.[a-zA-Z0-9][-a-zA-Z0-9]*)+)'
@@ -264,7 +264,7 @@ process(){
     _yellow '\nWARNING:\nThe following lines in GfwList contain regex, and might be ignored:\n\n'
     grep -n '^/.*$' "$GFWLIST_FILE"
     _yellow "\nThis script will try to convert some of the regex rules. But you should know this may not be a equivalent conversion.\nIf there's regex rules which this script do not deal with, you should add the domain manually to the list.\n\n"
-    grep -vE "$IGNORE_PATTERN" "$GFWLIST_FILE" | $SED_ERES "$HEAD_FILTER_PATTERN" | $SED_ERES "$TAIL_FILTER_PATTERN" | $SED_ERES "$HANDLE_WILDCARD_PATTERN" | grep -E "^$DOMAIN_PATTERN$" > "$DOMAIN_TEMP_FILE"
+    grep -vE "$IGNORE_PATTERN" "$GFWLIST_FILE" | $SED_ERES "$HEAD_FILTER_PATTERN" | $SED_ERES "$TAIL_FILTER_PATTERN" | $SED_ERES "$HANDLE_WILDCARD_PATTERN" | grep -E "^$DOMAIN_PATTERN$" | grep -vE "$IPV4_PATTERN" > "$DOMAIN_TEMP_FILE"
     if [ ! -s "$DOMAIN_TEMP_FILE" ]; then
         _red 'GfwList contains no usable domain rules.\n'
         clean_and_exit 2

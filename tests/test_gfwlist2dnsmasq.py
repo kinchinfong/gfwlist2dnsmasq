@@ -224,6 +224,27 @@ cat "$TEST_PAYLOAD" > "$dest"
         self.assert_failure_preserves_output(self.run_script(output=folder))
         self.assertEqual(list(folder.iterdir()), [])
 
+    def test_dotted_numbers_inside_hostnames_are_not_ip_literals(self):
+        hosts = ("v1.2.3.4.example.test", "1.2.3.4.example.test", "v1.2.3.4")
+        rules = RULES + "".join("||" + host + "\n" for host in hosts).encode()
+        self.assert_success(self.run_script("-l", rules=rules))
+        domains = self.output.read_text().splitlines()
+        for host in hosts:
+            self.assertIn(host, domains)
+
+    def test_ip_literals_are_filtered_after_extracting_hosts(self):
+        rules = RULES + b"|https://127.0.0.1:443/path\n||255.255.255.255^\n||0.0.0.0\n"
+        self.assert_success(self.run_script("-l", rules=rules))
+        domains = self.output.read_text().splitlines()
+        for address in ("127.0.0.1", "255.255.255.255", "0.0.0.0"):
+            self.assertNotIn(address, domains)
+        self.assertIn("example.test", domains)
+
+    def test_dotted_numbers_in_paths_do_not_remove_the_host(self):
+        rules = b"[AutoProxy 0.2.9]\n|https://example.test/releases/1.2.3.4\n"
+        self.assert_success(self.run_script("-l", rules=rules))
+        self.assertIn("example.test", self.output.read_text().splitlines())
+
     def test_empty_and_blank_exclusions_are_noops(self):
         for content in (b"", b"\n", b"\r\n \t\n"):
             with self.subTest(content=content):
