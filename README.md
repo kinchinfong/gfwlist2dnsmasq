@@ -3,7 +3,7 @@ A shell script which convert gfwlist into dnsmasq rules.
 
 Working on both Linux-based (Debian/Ubuntu/Cent OS/OpenWrt/LEDE/Cygwin/Bash on Windows/etc.) and BSD-based (FreeBSD/Mac OS X/etc.) system.
 
-This script needs `sed`, `base64`, `curl`(or`wget`). You should have these binaries on you system.
+This script needs `sed`, `awk`, `base64`, `curl` (or `wget`). You should have these binaries on you system.
 
 ### Usage
 ```
@@ -61,6 +61,13 @@ opkg install ca-certificates ca-bundle
 ```
 
 If you really want to bypass the certificate validation, use '-i' or '--insecure' option. You should know this is insecure.
+
+Domain whitelist rules such as `@@||safe.example.com` use the default DNS servers,
+including when a parent domain uses the configured DNS server. With ipset enabled,
+the exception uses an empty set list so it does not inherit the parent set.
+Whitelist domains and their children are removed from the generated domain list;
+a plain domain list cannot express a child exception beneath a blocked parent.
+URL/path and regular expression exceptions cannot be represented by DNS rules.
 
 ### Tests
 

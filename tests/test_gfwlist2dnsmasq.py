@@ -126,6 +126,35 @@ cat "$TEST_PAYLOAD" > "$dest"
     def test_http_error_preserves_output_even_with_a_valid_body(self):
         self.assert_failure_preserves_output(self.run_script(env={"TEST_HTTP_ERROR": "1"}))
 
+    def test_domain_whitelist_overrides_parent_dns_and_ipset(self):
+        rules = RULES + b"||safe.example.test\n||child.safe.example.test\n@@||safe.example.test\n"
+        self.assert_success(self.run_script("-s", "gfwlist,proxy", rules=rules))
+        output = self.output.read_text()
+        self.assertIn("server=/example.test/127.0.0.1#5353\n", output)
+        self.assertIn("server=/safe.example.test/#\n", output)
+        self.assertIn("ipset=/safe.example.test/,\n", output)
+        self.assertNotIn("server=/safe.example.test/127.0.0.1", output)
+        self.assertNotIn("ipset=/child.safe.example.test/gfwlist", output)
+        binary = os.environ.get("DNSMASQ") or shutil.which("dnsmasq")
+        if binary:
+            result = subprocess.run([binary, "--test", "--conf-file=" + str(self.output)],
+                                    capture_output=True, timeout=10)
+            self.assert_success(result)
+
+    def test_whitelisted_domains_are_removed_from_plain_lists(self):
+        rules = RULES + b"||safe.example.test\n||child.safe.example.test\n@@||safe.example.test^\n"
+        result = self.run_script("-l", rules=rules)
+        self.assert_success(result)
+        self.assertNotIn("safe.example.test", self.output.read_text().splitlines())
+        self.assertNotIn("child.safe.example.test", self.output.read_text().splitlines())
+        self.assertIn(b"cannot express exceptions", result.stdout)
+
+    def test_path_exceptions_do_not_whitelist_the_entire_domain(self):
+        rules = RULES + b"@@||example.test/allowed-path\n"
+        self.assert_success(self.run_script(rules=rules))
+        self.assertIn("server=/example.test/127.0.0.1#5353\n", self.output.read_text())
+        self.assertNotIn("server=/example.test/#\n", self.output.read_text())
+
     def test_empty_and_blank_exclusions_are_noops(self):
         for content in (b"", b"\n", b"\r\n \t\n"):
             with self.subTest(content=content):
@@ -154,6 +183,13 @@ cat "$TEST_PAYLOAD" > "$dest"
         exclude = self.file("exclude.txt", self.output.read_bytes())
         self.assert_success(self.run_script("-l", "--exclude-domain-file", exclude))
         self.assertEqual(self.output.read_bytes(), b"")
+
+    def test_whitelist_suffix_walk_handles_leading_dots(self):
+        extra = self.file("extra.txt", b".extra.test\n.safe.example.test\n")
+        rules = RULES + b"@@||safe.example.test\n"
+        self.assert_success(self.run_script("-l", "--extra-domain-file", extra, rules=rules))
+        self.assertIn(".extra.test", self.output.read_text().splitlines())
+        self.assertNotIn(".safe.example.test", self.output.read_text().splitlines())
 
 
 if __name__ == "__main__":
