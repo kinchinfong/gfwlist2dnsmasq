@@ -90,6 +90,31 @@ cat "$TEST_PAYLOAD" > "$dest"
         self.wrapper("cp", "exit 1\n")
         self.assert_failure_preserves_output(self.run_script())
 
+    def test_invalid_ports_preserve_output(self):
+        for value in ("", "abc", "53.5", "0", "65536", "-1", " 53", "9" * 200):
+            with self.subTest(port=value):
+                self.assert_failure_preserves_output(self.run_script("-p", value))
+
+    def test_invalid_dns_addresses_preserve_output(self):
+        for value in ("", "999.1.1.1", "-n", "not-an-ip"):
+            with self.subTest(address=value):
+                self.assert_failure_preserves_output(self.run_script("-d", value))
+
+    def test_options_require_values_in_sh_and_bash(self):
+        for shell in ("sh", "bash"):
+            if not shutil.which(shell):
+                continue
+            for flag in ("-d", "-p", "-s", "-o", "--extra-domain-file", "--exclude-domain-file"):
+                with self.subTest(shell=shell, flag=flag):
+                    self.assert_failure_preserves_output(self.run_script(flag, shell=shell))
+
+    def test_valid_ipv4_ipv6_and_port_limits(self):
+        for address, port in (("127.0.0.1", "1"), ("::1", "53"),
+                              ("2001:4860:4860::8888", "65535")):
+            with self.subTest(address=address, port=port):
+                self.assert_success(self.run_script("-d", address, "-p", port))
+                self.assertIn("/" + address + "#" + port, self.output.read_text())
+
     def test_empty_and_blank_exclusions_are_noops(self):
         for content in (b"", b"\n", b"\r\n \t\n"):
             with self.subTest(content=content):
