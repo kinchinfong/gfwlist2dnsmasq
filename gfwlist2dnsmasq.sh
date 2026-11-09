@@ -263,11 +263,10 @@ process(){
     printf 'twimg.edgesuite.net... ' && _green 'Added\n'
 
     # Delete exclude domains
-    if [ ! -z $EXCLUDE_DOMAIN_FILE ]; then
-        for line in $(cat $EXCLUDE_DOMAIN_FILE)
-        do
-            cat $DOMAIN_TEMP_FILE | grep -vF -f $EXCLUDE_DOMAIN_FILE > $DOMAIN_FILE
-        done
+    if [ -n "$EXCLUDE_DOMAIN_FILE" ]; then
+        sed "s/$(printf '\r')$//; /^[[:space:]]*$/d" "$EXCLUDE_DOMAIN_FILE" > "$TMP_DIR/exclude.txt" || clean_and_exit 2
+        grep -vxF -f "$TMP_DIR/exclude.txt" "$DOMAIN_TEMP_FILE" > "$DOMAIN_FILE"
+        [ $? -le 1 ] || clean_and_exit 2
         printf 'Domains in exclude domain file '$EXCLUDE_DOMAIN_FILE'... ' && _green 'Deleted\n'
     else
         cat $DOMAIN_TEMP_FILE > $DOMAIN_FILE

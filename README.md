@@ -62,6 +62,12 @@ opkg install ca-certificates ca-bundle
 
 If you really want to bypass the certificate validation, use '-i' or '--insecure' option. You should know this is insecure.
 
+### Tests
+
+Run the offline regression tests with Python 3:
+
+    python3 -m unittest discover -s tests -v
+
 ### Generated Configuration Files [![Build Status](https://travis-ci.org/cokebar/gfwlist2dnsmasq.svg?branch=master)](https://travis-ci.org/cokebar/gfwlist2dnsmasq)
 
 If you don't want to generate dnsmasq configuration file by yourself, you can directly download them:
