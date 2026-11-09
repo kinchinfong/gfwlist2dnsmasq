@@ -58,6 +58,38 @@ cat "$TEST_PAYLOAD" > "$dest"
     def assert_success(self, result):
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
 
+    def assert_failure_preserves_output(self, result):
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.output.read_bytes(), PREVIOUS)
+
+    def test_default_dns_and_ipset_outputs(self):
+        for args in ((), ("-s", "gfwlist,proxy")):
+            with self.subTest(args=args):
+                self.assert_success(self.run_script(*args))
+                output = self.output.read_text()
+                self.assertIn("server=/example.test/127.0.0.1#5353\n", output)
+                self.assertEqual("ipset=/example.test/gfwlist,proxy\n" in output, bool(args))
+
+    def test_download_failure_preserves_output(self):
+        self.assert_failure_preserves_output(self.run_script(env={"TEST_DOWNLOAD_RC": "7"}))
+
+    def test_decode_errors_stop_the_parent_shell(self):
+        for body in (b"%%%", base64.b64encode(RULES) + b"%%%"):
+            with self.subTest(body=body):
+                self.assert_failure_preserves_output(self.run_script(raw=body))
+
+    def test_failed_temp_directory_creation_stops_processing(self):
+        self.wrapper("mktemp", "exit 1\n")
+        self.assert_failure_preserves_output(self.run_script())
+
+    def test_sort_failure_preserves_output(self):
+        self.wrapper("sort", "exit 1\n")
+        self.assert_failure_preserves_output(self.run_script())
+
+    def test_output_copy_failure_is_reported(self):
+        self.wrapper("cp", "exit 1\n")
+        self.assert_failure_preserves_output(self.run_script())
+
     def test_empty_and_blank_exclusions_are_noops(self):
         for content in (b"", b"\n", b"\r\n \t\n"):
             with self.subTest(content=content):
