@@ -179,6 +179,51 @@ cat "$TEST_PAYLOAD" > "$dest"
         self.assertNotIn("bad domain.test", domains)
         self.assertNotIn("example.test?query", domains)
 
+    def test_output_path_with_spaces(self):
+        folder = self.root / "directory with spaces"
+        folder.mkdir()
+        output = folder / "output with spaces.conf"
+        result = self.run_script(output=output)
+        self.assert_success(result)
+        self.assertEqual(result.stderr, b"")
+        self.assertIn("server=/example.test/", output.read_text())
+
+    def test_domain_file_paths_with_spaces(self):
+        exclude = self.file("exclude domains.txt", b"example.test\n")
+        extra = self.file("extra domains.txt", b"extra.test\n")
+        result = self.run_script("-l", "--exclude-domain-file", exclude,
+                                 "--extra-domain-file", extra)
+        self.assert_success(result)
+        self.assertEqual(result.stderr, b"")
+        self.assertNotIn("example.test", self.output.read_text().splitlines())
+        self.assertIn("extra.test", self.output.read_text().splitlines())
+
+    def test_temp_directory_with_spaces(self):
+        folder = self.root / "temp files"
+        folder.mkdir()
+        self.wrapper("mktemp", 'exec "' + shutil.which("mktemp") + '" "$@"\n')
+        self.assert_success(self.run_script(env={"TMPDIR": str(folder)}))
+        self.assertEqual(list(folder.iterdir()), [])
+        self.assertIn("server=/example.test/", self.output.read_text())
+
+    def test_output_name_starting_with_a_dash(self):
+        self.assert_success(self.run_script(output=Path("-output.conf")))
+        self.assertIn("server=/example.test/", (self.root / "-output.conf").read_text())
+
+    def test_domain_file_names_starting_with_a_dash(self):
+        self.file("-exclude.txt", b"example.test\n")
+        self.file("-extra.txt", b"extra.test\n")
+        self.assert_success(self.run_script("-l", "--exclude-domain-file", "-exclude.txt",
+                                            "--extra-domain-file", "-extra.txt"))
+        self.assertNotIn("example.test", self.output.read_text().splitlines())
+        self.assertIn("extra.test", self.output.read_text().splitlines())
+
+    def test_output_directory_is_rejected(self):
+        folder = self.root / "output-directory"
+        folder.mkdir()
+        self.assert_failure_preserves_output(self.run_script(output=folder))
+        self.assertEqual(list(folder.iterdir()), [])
+
     def test_empty_and_blank_exclusions_are_noops(self):
         for content in (b"", b"\n", b"\r\n \t\n"):
             with self.subTest(content=content):
