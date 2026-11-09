@@ -23,6 +23,9 @@ class ConversionTests(unittest.TestCase):
         self.output.write_bytes(PREVIOUS)
         self.payload = self.root / "download.b64"
         self.wrapper("curl", """
+if [ "${TEST_HTTP_ERROR:-0}" = 1 ]; then
+    case " $* " in *" -f "*) exit 22;; esac
+fi
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -o|-O) dest=$2; shift;;
@@ -114,6 +117,14 @@ cat "$TEST_PAYLOAD" > "$dest"
             with self.subTest(address=address, port=port):
                 self.assert_success(self.run_script("-d", address, "-p", port))
                 self.assertIn("/" + address + "#" + port, self.output.read_text())
+
+    def test_empty_or_wrong_format_downloads_preserve_output(self):
+        for body in (b"", b"<html>Access denied</html>\n", b"[AutoProxy 0.2.9]\n! comments only\n"):
+            with self.subTest(body=body):
+                self.assert_failure_preserves_output(self.run_script(rules=body))
+
+    def test_http_error_preserves_output_even_with_a_valid_body(self):
+        self.assert_failure_preserves_output(self.run_script(env={"TEST_HTTP_ERROR": "1"}))
 
     def test_empty_and_blank_exclusions_are_noops(self):
         for content in (b"", b"\n", b"\r\n \t\n"):
