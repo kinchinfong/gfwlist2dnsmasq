@@ -35,6 +35,9 @@ Website:     https://github.com/cokebar
 
 Usage: sh gfwlist2dnsmasq.sh [options] -o FILE
 Valid options are:
+    -u, --base-url <URL>
+                URL of the Base64-encoded GfwList
+                (Default: https://github.com/gfwlist/gfwlist/raw/master/gfwlist.txt)
     -d, --dns <dns_ip>
                 DNS IP address for the GfwList Domains (Default: 127.0.0.1)
     -p, --port <dns_port>
@@ -100,6 +103,7 @@ check_depends(){
 }
 
 get_args(){
+    BASE_URL='https://github.com/gfwlist/gfwlist/raw/master/gfwlist.txt'
     OUT_TYPE='DNSMASQ_RULES'
     DNS_IP='127.0.0.1'
     DNS_PORT='5353'
@@ -115,7 +119,7 @@ get_args(){
 
     while [ ${#} -gt 0 ]; do
         case "$1" in
-            --dns|-d|--port|-p|--ipset|-s|--output|-o|--extra-domain-file|--exclude-domain-file)
+            --base-url|-u|--dns|-d|--port|-p|--ipset|-s|--output|-o|--extra-domain-file|--exclude-domain-file)
                 if [ "$#" -lt 2 ] || [ -z "$2" ]; then
                     _red "Error: $1 requires a non-empty value.\n"
                     exit 1
@@ -132,6 +136,10 @@ get_args(){
             --insecure | -i)
                 CURL_EXTARG='--insecure'
                 WGET_EXTARG='--no-check-certificate'
+                ;;
+            --base-url | -u)
+                BASE_URL="$2"
+                shift
                 ;;
             --dns | -d)
                 DNS_IP="$2"
@@ -224,7 +232,6 @@ get_args(){
 
 process(){
     # Set Global Var
-    BASE_URL='https://github.com/gfwlist/gfwlist/raw/master/gfwlist.txt'
     TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/gfwlist2dnsmasq.XXXXXX") || exit 2
     BASE64_FILE="$TMP_DIR/base64.txt"
     GFWLIST_FILE="$TMP_DIR/gfwlist.txt"

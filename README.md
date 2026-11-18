@@ -9,6 +9,9 @@ This script needs `sed`, `awk`, `base64`, `curl` (or `wget`). You should have th
 ```
 sh gfwlist2dnsmasq.sh [options] -o FILE
 Valid options are:
+    -u, --base-url <URL>
+                URL of the Base64-encoded GfwList
+                (Default: https://github.com/gfwlist/gfwlist/raw/master/gfwlist.txt)
     -d, --dns <dns_ip>
                 DNS IP address for the GfwList Domains (Default: 127.0.0.1)
     -p, --port <dns_port>
@@ -31,6 +34,12 @@ Valid options are:
                 This file will be processed after the exclude-domain-file
                 Please put one domain per line
     -h, --help  Usage
+```
+
+To download from a custom GfwList URL:
+
+```sh
+sh gfwlist2dnsmasq.sh --base-url 'https://example.com/gfwlist.txt' -o dnsmasq.conf
 ```
 
 ### OpenWRT Usage
